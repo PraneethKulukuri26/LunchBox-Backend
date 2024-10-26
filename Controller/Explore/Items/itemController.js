@@ -9,7 +9,7 @@ async function getItemsByCanteen(req,res) {
     }
 
     const conn=await db.getConnection();
-    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, img, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where canteenId=? and availability=true';
+    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where canteenId=? and availability=true';
 
     await conn.query(query,[canteenId]).then(result=>{
       conn.release();

@@ -1,5 +1,5 @@
   const { measureMemory } = require("vm");
-const db=require("../../Config/mysql_DB");
+  const db=require("../../Config/mysql_DB");
   const { checkIsAdmin } = require("./helper");
   const fs=require('fs');
   const path=require('path');
@@ -21,6 +21,40 @@ const db=require("../../Config/mysql_DB");
         result=result[0];
 
         //console.log(result);
+        if(!result || result.length==0){
+          return res.json({code:1,message:"NO items."});
+        }
+        
+
+        for(let i=0;i<result.length;i++){
+          result[i].images=[];
+          try{
+              const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+result[i].FoodItemId+"/");
+
+              const files = fs.readdirSync(directoryPath);
+              files.forEach(file => {
+                result[i].images.push(file);
+                console.log(file);
+              });
+    
+            }catch(err){
+              console.log(err.message);
+              return res.json({code:0,message:"Unable to fetch item images."});
+            }
+        }
+
+
+        // try{
+        //   const directoryPath = path.join(__dirname, "public/images/canteens/"+CanteenId+"/foodImages/"+result.FoodItemId+"/");
+
+        //   const files = fs.readdirSync(directoryPath);
+        //   files.forEach(file => {
+        //     console.log(file);
+        //   });
+
+        // }catch(err){
+        //   return res.json({code:0,message:"Unable to fetch item images."});
+        // }
 
         return res.json({
           code:1,
