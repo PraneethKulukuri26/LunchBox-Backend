@@ -7,7 +7,6 @@
   async function CanteengetItems(req,res){
     try{
       const CanteenId=req.payload.CanteenId;
-      ///console.log(CanteenID);
 
       if(!req.payload.role==='admin'){
         return res.json({code:-1,message:'Invalid Token.'});
@@ -20,7 +19,6 @@
         conn.release();
         result=result[0];
 
-        //console.log(result);
         if(!result || result.length==0){
           return res.json({code:1,message:"NO items."});
         }
@@ -42,19 +40,6 @@
               return res.json({code:0,message:"Unable to fetch item images."});
             }
         }
-
-
-        // try{
-        //   const directoryPath = path.join(__dirname, "public/images/canteens/"+CanteenId+"/foodImages/"+result.FoodItemId+"/");
-
-        //   const files = fs.readdirSync(directoryPath);
-        //   files.forEach(file => {
-        //     console.log(file);
-        //   });
-
-        // }catch(err){
-        //   return res.json({code:0,message:"Unable to fetch item images."});
-        // }
 
         return res.json({
           code:1,
@@ -91,6 +76,16 @@
         conn.release();
 
         if(result[0].affectedRows>0){
+
+          const dir=path.join(__dirname,"../../public/images/canteens/"+CanteenId+"/foodImages/"+itemId+"/");
+
+          try {
+            fs.rmSync(dir, { recursive: true, force: true });
+            console.log(`Folder for FoodItemId ${itemId} deleted successfully.`);
+          } catch (err) {
+            console.error("Error deleting FoodItemId folder: ", err.message);
+          }
+
           return res.json({
             code:1,
             message:'Item removed.'
@@ -122,7 +117,7 @@
     try{
       const itemId=req.query.id;
       const CanteenId=req.payload.CanteenId;
-      const {Description,Price,img,Category,AvailableFrom,AvailableTo,availability,Quantity}=req.body;
+      const {Description,Price,Category,AvailableFrom,AvailableTo,availability,Quantity}=req.body;
 
       if(!Description || !Category || isNaN(Price) || isNaN(Quantity)){
         return res.json({
@@ -130,11 +125,9 @@
         });
       }
 
-
-
-      const query='update FoodItem set Description = ? , Price = ? , img = ? , Category = ? , AvailableFrom = ? , AvailableTo = ? , availability = ? , Quantity = ? where itemId = ? and CanteenId = ?';
+      const query='update FoodItem set Description = ? , Price = ? , Category = ? , AvailableFrom = ? , AvailableTo = ? , availability = ? , Quantity = ? where itemId = ? and CanteenId = ?';
       const conn=await db.getConnection();
-      await conn.query(query,[Description,Price,img,Category,AvailableFrom,AvailableTo,availability,Quantity,itemId,CanteenId])
+      await conn.query(query,[Description,Price,Category,AvailableFrom,AvailableTo,availability,Quantity,itemId,CanteenId])
       .then(result=>{
         conn.release();
 
@@ -195,14 +188,6 @@
       }
 
       let { FoodItemName, Description = "", Price, Category = "veg", AvailableFrom = "9:00", AvailableTo = "17:30", Quantity = 30, availability = true } = jsonData;
-
-      // if(!Description) Description="";
-      // if(!img) img="";
-      // if(!Category) Category="veg";
-      // if(!AvailableFrom) AvailableFrom="9:00";
-      // if(!AvailableTo) AvailableTo="17:30";
-      // if(!Quantity) Quantity=30;
-      // if(availability==null) availability=true;
       
       if(!FoodItemName || !Price || isNaN(Price)){
         return res.json({

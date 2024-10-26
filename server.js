@@ -36,12 +36,9 @@ app.listen(PORT, () => {
 const CanteenAuthRouter=require('./router/Canteen/authRounter')
 app.use('/api/Canteen/auth',CanteenAuthRouter);
 
-
 //admin-items
 const CanteenItemRouter=require("./router/Canteen/itemRouter")
 app.use('/api/Canteen/item',verifyToken,CanteenItemRouter);
-
-
 
 //User-auth
 const UserAuthRouter=require('./router/User/authRouter');
