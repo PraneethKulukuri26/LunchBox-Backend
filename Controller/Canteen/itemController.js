@@ -3,11 +3,11 @@
   const { checkIsAdmin } = require("./helper");
   const fs=require('fs');
   const path=require('path');
+const { json } = require("body-parser");
 
   async function CanteengetItems(req,res){
     try{
       const CanteenId=req.payload.CanteenId;
-      ///console.log(CanteenID);
 
       if(!req.payload.role==='admin'){
         return res.json({code:-1,message:'Invalid Token.'});
@@ -20,7 +20,6 @@
         conn.release();
         result=result[0];
 
-        //console.log(result);
         if(!result || result.length==0){
           return res.json({code:1,message:"NO items."});
         }
@@ -42,19 +41,6 @@
               return res.json({code:0,message:"Unable to fetch item images."});
             }
         }
-
-
-        // try{
-        //   const directoryPath = path.join(__dirname, "public/images/canteens/"+CanteenId+"/foodImages/"+result.FoodItemId+"/");
-
-        //   const files = fs.readdirSync(directoryPath);
-        //   files.forEach(file => {
-        //     console.log(file);
-        //   });
-
-        // }catch(err){
-        //   return res.json({code:0,message:"Unable to fetch item images."});
-        // }
 
         return res.json({
           code:1,
@@ -91,6 +77,16 @@
         conn.release();
 
         if(result[0].affectedRows>0){
+
+          const dir=path.join(__dirname,"../../public/images/canteens/"+CanteenId+"/foodImages/"+itemId+"/");
+
+          try {
+            fs.rmSync(dir, { recursive: true, force: true });
+            console.log(`Folder for FoodItemId ${itemId} deleted successfully.`);
+          } catch (err) {
+            console.error("Error deleting FoodItemId folder: ", err.message);
+          }
+
           return res.json({
             code:1,
             message:'Item removed.'
@@ -118,23 +114,59 @@
     }
   }
 
-  async function updateItem(req,res) {
+  async function updateItemData(req,res) {
     try{
       const itemId=req.query.id;
-      const CanteenId=req.payload.CanteenId;
-      const {Description,Price,img,Category,AvailableFrom,AvailableTo,availability,Quantity}=req.body;
 
-      if(!Description || !Category || isNaN(Price) || isNaN(Quantity)){
-        return res.json({
-          code:0,message:'Invalid data.'
-        });
+      if(!itemId){
+        return res.json({code:0,message:'Please provide itemId.'});
       }
 
+      const CanteenId=req.payload.CanteenId;
+      const { Description, Price, Category, AvailableFrom, AvailableTo, availability, Quantity } = req.body;
 
+      let updates = [];
+      let values = [];
 
-      const query='update FoodItem set Description = ? , Price = ? , img = ? , Category = ? , AvailableFrom = ? , AvailableTo = ? , availability = ? , Quantity = ? where itemId = ? and CanteenId = ?';
+      if (Description) {
+        updates.push("Description = ?");
+        values.push(Description);
+      }
+      if (Price) {
+        updates.push("Price = ?");
+        values.push(Price);
+      }
+      if (Category) {
+        updates.push("Category = ?");
+        values.push(Category);
+      }
+      if (AvailableFrom) {
+        updates.push("AvailableFrom = ?");
+        values.push(AvailableFrom);
+      }
+      if (AvailableTo) {
+        updates.push("AvailableTo = ?");
+        values.push(AvailableTo);
+      }
+      if (availability) {
+        updates.push("availability = ?");
+        values.push(availability);
+      }
+      if (Quantity) {
+        updates.push("Quantity = ?");
+        values.push(Quantity);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({codw:0, message: "No fields to update" });
+      }
+
+      values.push(itemId);
+      values.push(CanteenId);
+
+      const query=`update FoodItem set ${updates.join(', ')} where itemId = ? and CanteenId = ?`;
       const conn=await db.getConnection();
-      await conn.query(query,[Description,Price,img,Category,AvailableFrom,AvailableTo,availability,Quantity,itemId,CanteenId])
+      await conn.query(query,values)
       .then(result=>{
         conn.release();
 
@@ -157,6 +189,77 @@
         message:'Failed to update data.'
       })
     }
+  }
+
+  async function updateItemImages(req,res) {
+
+    try{
+      let newImages=[];
+      let removedImages=[];
+      const CanteenId=req.payload.CanteenId;
+      const itemId=req.query.id;
+
+      try{
+        newImages=req.files.new_images;
+        console.log(newImages);
+
+        if (!Array.isArray(newImages)) {
+          newImages=[newImages];
+        }
+
+        if(!newImages || newImages.length==0){
+          throw new Error("no new images provided.");
+        }
+
+        for(let i=0;i<newImages.length;i++){
+          if(!(newImages[i].mimetype=='image/png' || newImages[i].mimetype=='image/jpeg')){
+            throw new Error("file format not accesspted.");
+          }
+        }
+
+      }catch(err){
+        newImages=[];
+        console.log(err.message);
+      }
+
+      try{
+        removedImages=JSON.parse(req.body.removed_images);
+        removedImages=removedImages.images;
+
+        if (!Array.isArray(removedImages)) {
+          removedImages=[removedImages];
+        }
+      }catch(err){
+        removedImages=[];
+        console.log(err.message);
+      }
+
+      if(newImages.length==0 && removedImages.length==0){
+        return res.json({code:0,message:"no images provided."});
+      }
+
+      if(newImages.length!=0){
+        for(let i=0;i<newImages.length;i++){
+          await newImages[i].mv('public/images/canteens/'+CanteenId+'/foodImages/'+itemId+'/'+newImages[i].name);
+        }
+      }
+
+      if(removedImages.length!=0){
+        for(let i=0;i<removedImages.length;i++){
+          try{
+            fs.rmSync('public/images/canteens/'+CanteenId+'/foodImages/'+itemId+'/'+removedImages[i]);
+          }catch(err){
+            console.log(err.message);
+          }
+        }
+      }
+
+      return res.json({code:1,message:"Updates on Images executed."});
+
+    }catch(err){
+      console.log(err);
+      return res/json({code:-1,message:err.message});
+    } 
   }
 
   async function addItem(req,res) {
@@ -195,14 +298,6 @@
       }
 
       let { FoodItemName, Description = "", Price, Category = "veg", AvailableFrom = "9:00", AvailableTo = "17:30", Quantity = 30, availability = true } = jsonData;
-
-      // if(!Description) Description="";
-      // if(!img) img="";
-      // if(!Category) Category="veg";
-      // if(!AvailableFrom) AvailableFrom="9:00";
-      // if(!AvailableTo) AvailableTo="17:30";
-      // if(!Quantity) Quantity=30;
-      // if(availability==null) availability=true;
       
       if(!FoodItemName || !Price || isNaN(Price)){
         return res.json({
@@ -258,6 +353,7 @@
   module.exports={
     CanteengetItems,
     deleteItem,
-    updateItem,
-    addItem
+    updateItemData,
+    addItem,
+    updateItemImages
   }

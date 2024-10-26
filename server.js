@@ -36,12 +36,9 @@ app.listen(PORT, () => {
 const CanteenAuthRouter=require('./router/Canteen/authRounter')
 app.use('/api/Canteen/auth',CanteenAuthRouter);
 
-
 //admin-items
 const CanteenItemRouter=require("./router/Canteen/itemRouter")
 app.use('/api/Canteen/item',verifyToken,CanteenItemRouter);
-
-
 
 //User-auth
 const UserAuthRouter=require('./router/User/authRouter');
@@ -70,13 +67,17 @@ app.get("/test",(req,res)=>{
 
 
 app.post('/test/files/',async (req,res)=>{
+
+
   try{
     const file=req.files.img;
+    console.log(file);
   //  if(file.length==0){
   //   throw new 
   //  }
-  console.log(file);
-  throw new Error("Failed tree");
+  fs.rmSync('public/'+file.name);
+  //console.log(file);
+  //throw new Error("Failed tree");
   }catch(err){
     return res.json({code:0,message:err.message});
   }
@@ -86,7 +87,7 @@ app.post('/test/files/',async (req,res)=>{
   //     fs.mkdirSync(dir, { recursive: true });  // Create directory recursively
   //   }
 
-  //  await file[0].mv('public/images/'+file[0].name);
+    
 
    //image url: http://localhost:5000/images/img1.jpeg
 
