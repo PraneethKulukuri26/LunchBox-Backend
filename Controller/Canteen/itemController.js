@@ -201,7 +201,6 @@ const { json } = require("body-parser");
 
       try{
         newImages=req.files.new_images;
-        console.log(newImages);
 
         if (!Array.isArray(newImages)) {
           newImages=[newImages];
@@ -245,6 +244,25 @@ const { json } = require("body-parser");
       }
 
       if(removedImages.length!=0){
+        
+        let cou=0;
+        try{
+          const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+itemId+"/");
+
+          const files = fs.readdirSync(directoryPath);
+          cou=files.length;
+
+        }catch(err){
+          console.log(err.message);
+          return res.json({code:0,message:"Unable to delete items."});
+        }
+
+        if(cou==0){
+          return res.json({code:0,message:"Images are not there for this item."});
+        }else if(removedImages.length==cou){
+          return res.json({code:0,message:"Can not remove all the images."});
+        }
+
         for(let i=0;i<removedImages.length;i++){
           try{
             fs.rmSync('public/images/canteens/'+CanteenId+'/foodImages/'+itemId+'/'+removedImages[i]);
@@ -317,7 +335,7 @@ const { json } = require("body-parser");
           
           const dir = path.join(__dirname,'../../public/images/canteens/'+CanteenId+'/foodImages/'+result[0].insertId+'/');
           if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });  // Create directory recursively
+            fs.mkdirSync(dir, { recursive: true });
           }
 
           for(let i=0;i<images.length;i++){
