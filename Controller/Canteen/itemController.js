@@ -21,7 +21,7 @@ const { json } = require("body-parser");
         result=result[0];
 
         if(!result || result.length==0){
-          return res.json({code:1,message:"NO items."});
+          return res.json({code:1,message:"Items fetched Successfully",data:[]});
         }
         
 
