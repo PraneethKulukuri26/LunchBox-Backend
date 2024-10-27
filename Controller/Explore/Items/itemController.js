@@ -15,6 +15,28 @@ async function getItemsByCanteen(req,res) {
       conn.release();
       result=result[0];
 
+      if(!result || result.length==0){
+        return res.json({code:1,message:"Items fetched Successfully",data:[]});
+      }
+      
+
+      for(let i=0;i<result.length;i++){
+        result[i].images=[];
+        try{
+            const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+result[i].FoodItemId+"/");
+
+            const files = fs.readdirSync(directoryPath);
+            files.forEach(file => {
+              result[i].images.push(file);
+              console.log(file);
+            });
+  
+          }catch(err){
+            console.log(err.message);
+            return res.json({code:0,message:"Unable to fetch item images."});
+          }
+      }
+
       return res.json({code:1,message:'Items Fetched Successfully',data:result});
     }).catch(err=>{
       conn.release();
@@ -41,6 +63,25 @@ async function getItemById(req,res) {
     await conn.query(query,[id]).then(result=>{
       conn.release();
       result=result[0];
+
+      if(!result || result.length==0){
+        return res.json({code:1,message:"Item fetched Successfully",data:{}});
+      }
+
+      try{
+        result[0].images=[];
+        const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+result[0].FoodItemId+"/");
+
+        const files = fs.readdirSync(directoryPath);
+        files.forEach(file => {
+          result[0].images.push(file);
+          console.log(file);
+        });
+
+      }catch(err){
+        console.log(err.message);
+        return res.json({code:0,message:"Unable to fetch item images."});
+      }
 
       return res.json({code:1,message:'Item Fetched Successfully',data:result[0]});
     }).catch(err=>{

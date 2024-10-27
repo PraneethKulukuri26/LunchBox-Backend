@@ -1,3 +1,5 @@
 .env
 test.js
 /public/
+
+dump.rdb
