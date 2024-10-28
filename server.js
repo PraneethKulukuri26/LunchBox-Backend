@@ -100,10 +100,12 @@ app.post('/test/files/',async (req,res)=>{
 
 
 app.post('/test/postData',async(req,res)=>{
-  obj=JSON.parse(req.body.json);
-  //console.log(obj);
-  return res.json({code:1});
-  
+  res.json({code:1});
 });
+
+
+
+const rter=require('./Controller/User/authController');
+app.get('/test/profile',verifyToken,rter.getProfile);
 
 

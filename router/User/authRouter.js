@@ -11,6 +11,7 @@ router.post('/triggerOtpRest',controller.sendEmailForResetPassword);
 
 router.post('/resetPassword',verifyToken,controller.resetPassword);
 router.post('/registerUser',verifyToken,controller.registerUser);
+router.post('/profile',verifyToken,controller.getProfile);
 
 router.post('/test',verifyToken,controller.test);
 
