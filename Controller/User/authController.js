@@ -2,6 +2,10 @@ const db=require("../../Config/mysql_DB");
 const mailSender=require('../../Services/mailSender');
 const jwt=require("jsonwebtoken");
 const bcrypt=require('bcrypt');
+const { strictTransportSecurity } = require("helmet");
+const redis=require('../../Config/redisClint');
+const e = require("express");
+const { json } = require("body-parser");
 
 async function sendEmailReg(req,res) {
   try{
@@ -22,10 +26,25 @@ async function sendEmailReg(req,res) {
       return res.json({code:0,message:'Email already exists.'});
     }
 
+    conn.release();
+
     const otp=Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp=await bcrypt.hash(otp,10);
+    
+    await redis.set("OTP:"+email, hashedOtp);
+
+    const result=await mailSender.sendMailForRegister({email:email,otp:otp});
+
+    if(result==1){
+      await redis.expire("OTP:"+email,300);
+      return res.json({code:1,message:'OTP Sent Successfully.'});
+    }else{
+      await redis.del("OTP:"+email);
+      return res.json({code:0,message:'Failed to send Otp.'})
+    }
+
     //console.log(hashedOtp);
-    await conn.query("insert into OtpTable (email,otp,created_at) values(?,?,now())",[email,hashedOtp]);
+    /*await conn.query("insert into OtpTable (email,otp,created_at) values(?,?,now())",[email,hashedOtp]);
 
     const result=await mailSender.sendMailForRegister({email:email,otp:otp});
 
@@ -36,7 +55,7 @@ async function sendEmailReg(req,res) {
       await conn.query("delete from OtpTable where email=? and otp=?",[email,otp]);
       conn.release();
       return res.json({code:0,message:'Failed to send Otp.'})
-    }
+    }*/
   }catch(err){
     console.log("Error in triggering otp: "+err);
     return res.json({ code: -1, message: "Internal server error" });
@@ -51,34 +70,57 @@ async function verifyOtp(req,res) {
       return res.json({code:0,message:'Invalid Data.'});
     }
 
-    const conn=await db.getConnection();
-    await conn.query("select otp from OtpTable where email = ? and created_at >= NOW() - INTERVAL 5 MINUTE ORDER BY created_at DESC LIMIT 1",[email])
-    .then(async (result)=>{
-      if(result[0].length>0){
-        result=result[0];
-        console.log(otp);
-        const isValid=await bcrypt.compare(otp,result[0].otp);
-        if(isValid){
-          await conn.query('delete from OtpTable where email=?',[email]);
-          conn.release();
+    const otpCache=await redis.get("OTP:"+email);
 
-          const token=jwt.sign({
-            email:email,
-            purpose:purpose
-          },process.env.SECRET_KEY,{
-            algorithm: "HS512",
-            expiresIn: "10m",
-          });
+    if(!otpCache){
+      return res.json({code:0,message:"OTP has expired. Please request a new one."});
+    }
 
-          return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
-        }else{
-          conn.release();
-          return res.json({code:0,message:'Incorrect Otp'});
-        }
-      }else{
-        return res.json({ code: 0, message: "OTP expired" });
-      }
-    });
+    const isValid=await bcrypt.compare(otp,otpCache);
+    if(isValid){
+      const token=jwt.sign({
+          email:email,
+          purpose:purpose
+        },process.env.SECRET_KEY,{
+          algorithm: "HS512",
+          expiresIn: "10m",
+        });
+      
+      //await redis.del("OTP:"+email);  
+      return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
+    }else{
+      return res.json({code:0,message:'Incorrect Otp'});
+    }
+
+    // const conn=await db.getConnection();
+    // await conn.query("select otp from OtpTable where email = ? and created_at >= NOW() - INTERVAL 5 MINUTE ORDER BY created_at DESC LIMIT 1",[email])
+    // .then(async (result)=>{
+    //   if(result[0].length>0){
+    //     result=result[0];
+    //     console.log(result[0].otp);
+    //     const isValid=await bcrypt.compare(otp,result[0].otp);
+    //     console.log(isValid);
+    //     if(isValid){
+    //       await conn.query('delete from OtpTable where email=?',[email]);
+    //       conn.release();
+
+    //       const token=jwt.sign({
+    //         email:email,
+    //         purpose:purpose
+    //       },process.env.SECRET_KEY,{
+    //         algorithm: "HS512",
+    //         expiresIn: "10m",
+    //       });
+
+    //       return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
+    //     }else{
+    //       conn.release();
+    //       return res.json({code:0,message:'Incorrect Otp'});
+    //     }
+    //   }else{
+    //     return res.json({ code: 0, message: "OTP expired" });
+    //   }
+    // });
   }catch(err){
     console.log(err);
     return res.json({ code: -1, message: "Internal server error" });
@@ -185,24 +227,25 @@ async function sendEmailForResetPassword(req,res) {
 
     let userExistResult=await conn.query("select exists( select 1 from User where Email=?) as emailExist",[email]);
     userExistResult=userExistResult[0];
+    conn.release();
     if(userExistResult[0].emailExist==0){
-      conn.release();
       return res.json({code:0,message:'Email does not found.'});
     }
 
 
     const otp=Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp=""+await bcrypt.hash(otp,10);
-    await conn.query("insert into OtpTable (email,otp,created_at) values(?,?,now())",[email,hashedOtp]);
-
+    //await conn.query("insert into OtpTable (email,otp,created_at) values(?,?,now())",[email,hashedOtp]);
+    await redis.set("OTP:"+email, hashedOtp);
     const result=await mailSender.sendMailForReset({email:email,otp:otp});
 
     if(result==1){
-      conn.release();
+      await redis.expire("OTP:"+email,300);
       return res.json({code:1,message:'OTP Sent Successfully.'});
     }else{
-      await conn.query("delete from OtpTable where email=? and otp=?",[email,otp]);
-      conn.release();
+      // await conn.query("delete from OtpTable where email=? and otp=?",[email,otp]);
+      // conn.release();
+      await redis.del("OTP:"+email);
       return res.json({code:0,message:'Failed to send Otp.'})
     }
 
@@ -246,6 +289,29 @@ async function resetPassword(req,res) {
   }
 }
 
+async function getProfile(req,res) {
+  try{
+    const userId=req.payload.userId;
+    console.log(userId);
+
+    const conn=await db.getConnection();
+
+    conn.query('select * from User where userId=?',[userId])
+    .then(result=>{
+      conn.release();
+      return res.json({code:-1,data:result[0]});
+    }).catch(err=>{
+      console.log(err.message);
+      return res.json({code:0,message:'Error while fetching user data.'});
+    });
+
+    //return res.json({code:-1});
+
+  }catch(err){
+    return res.json({code:-1,message:"Error"});
+  }  
+}
+
 
 async function test(req,res) {
   try{
@@ -266,5 +332,6 @@ module.exports={
   sendEmailForResetPassword,
   resetPassword,
   test,
+  getProfile
   
 }
