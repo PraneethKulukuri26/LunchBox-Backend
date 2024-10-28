@@ -86,7 +86,7 @@ async function verifyOtp(req,res) {
           expiresIn: "10m",
         });
       
-      //await redis.del("OTP:"+email);  
+      await redis.del("OTP:"+email);  
       return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
     }else{
       return res.json({code:0,message:'Incorrect Otp'});
