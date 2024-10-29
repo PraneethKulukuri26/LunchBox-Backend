@@ -104,7 +104,53 @@ async function addToCart(req,res) {
   
 }
 
+async function removeFromCart(req,res) {
+  try{
+    const itemId=Number(req.query.id);
+    const userId=req.payload.userId;
+
+    if(!itemId){
+      return res.status(400).json({
+        code: 0,
+        message: `ItemId is missing. Please provide all required parameters.`
+      });
+    }
+
+    let cacheCart=await redis.get("UserCart_"+userId);
+    if(!cacheCart){
+      return res.status(404).json({code:0,message:"cart data not found."});
+    }
+
+    cacheCart=JSON.parse(cacheCart);
+
+    const itemExists = cacheCart.cart.some((item) => item.itemId === itemId);
+    if (!itemExists) {
+      return res.status(404).json({
+        code: 0,
+        message: `Item with itemId ${itemId} not found in cart.`,
+      });
+    }
+    
+    cacheCart.cart=cacheCart.cart.filter(item=>item.itemId!==itemId);
+    if(cacheCart.cart.length==0){
+      await redis.del("UserCart_"+userId);
+    }else{
+      await redis.setex("UserCart_"+userId,3600,JSON.stringify(cacheCart));
+    }
+
+    return res.status(200).json({
+      code: 1,
+      message: "Item successfully removed from the cart."
+    });
+
+  }catch(err){
+    console.log(err.message);
+    return res.status(500).json({code:-1,message:'Internal Server error'});
+  }
+}
+
 
 module.exports={
   addToCart,
+  removeFromCart
 }
