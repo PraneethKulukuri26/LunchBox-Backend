@@ -45,8 +45,12 @@ const UserAuthRouter=require('./router/User/authRouter');
 app.use('/api/User/auth',UserAuthRouter);
 
 //User-items
-const UserItemRouer=require('./router/User/itemRouter');
-app.use('/api/User/item',verifyToken,UserAuthRouter);
+const UserItemRouter=require('./router/User/itemRouter');
+app.use('/api/User/item',verifyToken,UserItemRouter);
+
+//User-order
+const UserOrderRouter=require('./router/User/orderRouter');
+app.use('/api/User/order',verifyToken,UserOrderRouter);
 
 //explore
 const ExploreRouter=require('./router/explore/exploreRouter');
