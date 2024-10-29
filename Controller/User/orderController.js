@@ -1,0 +1,110 @@
+const redis=require('../../Config/redisClint');
+const db=require('../../Config/redisClint');
+const fs=require('fs');
+const path=require('path');
+const time=process.env.redis_time;
+
+async function placeOrder(req,res) {
+
+  try{
+
+  }catch(err){
+    console.log(err.message);
+    return res.json({code:-1,message:'Internal Server error'});
+  }
+  
+}
+
+async function addToCart(req,res) {
+
+  try{
+    const itemId=req.query.id;
+    const quantity=req.query.quantity;
+    const userId=req.payload.userId;
+
+    if (!itemId || !quantity) {
+      let missingParam = !itemId ? 'itemId' : 'quantity';
+      return res.status(400).json({
+          code: 0,
+          message: `${missingParam} is missing. Please provide all required parameters.`
+      });
+    }
+
+    let cacheCart=await redis.get("UserCart_"+userId);
+    let item=await redis.get("CanteenItem:"+id);
+
+    if(!item){
+      const conn=await db.getConnection();
+
+      const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where FoodItemId=? and availability=true';
+
+      await conn.query(query,[id]).then(async result=>{
+        conn.release();
+        result=result[0];
+
+        if(!result || result.length==0){
+          return res.status(404).json({
+            code: 0,
+            message: "Item not found."
+          });
+        }
+
+        try{
+          result[0].images=[];
+          const directoryPath = path.join(__dirname, "../../../public/images/canteens/"+result[0].canteenId+"/foodImages/"+result[0].FoodItemId+"/");
+  
+          const files = fs.readdirSync(directoryPath);
+          files.forEach(file => {
+            result[0].images.push(file);
+          });
+  
+        }catch(err){
+          console.log(err.message);
+          return res.json({code:0,message:"Internel Server error."});
+        }
+
+        await redis.setex("CanteenItem:"+id, time, JSON.stringify(result[0]));
+        item=result[0];
+      });
+    }else{
+      item = JSON.parse(item);
+    }
+
+    if(cacheCart){
+      cacheCart=JSON.parse(cacheCart);
+
+      if (cacheCart.canteenId && cacheCart.canteenId !== item.canteenId) {
+        return res.status(409).json({
+          code: 0,
+          message: 'All items in the cart must be from the same canteen.'
+        });
+      }
+
+      cacheCart.cart = cacheCart.cart || [];
+      cacheCart.cart.push({ itemId: itemId, quantity: quantity });
+
+    }else{
+      cacheCart = {
+        canteenId: item.canteenId,
+        cart: [{ itemId: itemId, quantity: quantity }]
+      };
+    }
+
+    await redis.setex("UserCart_" + userId, 3600, JSON.stringify(cacheCart));
+
+    return res.status(200).json({
+      code: 1,
+      message: 'Item added to cart successfully'
+    });
+
+  }catch(err){
+    console.log(err.message);
+    return res.status(500).json({code:-1,message:'Internal Server error'});
+  }
+  
+}
+
+
+module.exports={
+  addToCart,
+}
