@@ -149,8 +149,28 @@ async function removeFromCart(req,res) {
   }
 }
 
+async function clearCart(req,res) {
+  try{
+    const userId=req.payload.userId;
+
+    let cacheCart=await redis.get("UserCart_"+userId);
+    if(!cacheCart){
+      return res.status(404).json({code:0,message:"cart data not found."});
+    }
+
+    await redis.del("UserCart_"+userId);
+
+    return res.status(200).json({code:1,message:"The cart has been cleared successfully."});
+
+  }catch(err){
+    console.log(err.message);
+    return res.status(500).json({code:-1,message:'Internal Server error'});
+  }
+}
+
 
 module.exports={
   addToCart,
-  removeFromCart
+  removeFromCart,
+  clearCart
 }
