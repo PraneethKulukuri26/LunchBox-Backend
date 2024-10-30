@@ -59,7 +59,12 @@ app.use('/api/explore',ExploreRouter);
 
 
 
-app.get("/test",(req,res)=>{
+app.post("/test",(req,res)=>{
+
+  let obj=req.body;
+  obj=[obj];
+  console.log(obj.length);
+
     res.json({code:17 , message: 'Test Api' , data: [
           {
             name: 'Praneeth',

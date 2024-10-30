@@ -168,9 +168,72 @@ async function clearCart(req,res) {
   }
 }
 
+async function updateCart(req,res) {
+  
+  try{
+    const userId=req.payload.userId;
+    let obj=req.body;
+
+    let cacheCart=await redis.get("UserCart_"+userId);
+    if(!cacheCart){
+      return res.status(404).json({code:0,message:"cart data not found."});
+    }  
+
+    cacheCart=JSON.parse(cacheCart);
+    if(cacheCart.canteenId==-9){
+      return res.json({code:0,message:'Cart is empty.'});
+    }
+
+    if (Object.keys(obj).length === 0) {
+      return res.status(400).json({
+        code: 0,
+        message: "Request body is empty. Please provide the necessary data."
+      });
+    }
+
+    if (!Array.isArray(obj)) {
+      obj=[obj];
+    }
+
+    let newCart=[];
+    const cacheCartItems = new Set(cacheCart.cart.map(it => it.itemId));
+
+    for (let i = 0; i < obj.length; i++) {
+      const item = obj[i];
+      
+      if (!item.itemId || typeof item.quantity !== 'number') {
+          return res.status(400).json({
+              code: 0,
+              message: `Invalid data.`
+          });
+      }
+
+      if (item.quantity > 0) {
+
+          if (!cacheCartItems.has(item.itemId)) {
+              return res.json({ code: 0, message: `${item.itemId} not found in the cart.` });
+          }
+
+          newCart.push(item);
+      }
+    }
+
+    cacheCart.cart=newCart;
+
+    await redis.setex("UserCart_"+userId,3600,JSON.stringify(cacheCart));
+
+    return res.status(200).json({code:1,message:'Cart Updated Successfully.'});
+    
+  }catch(err){
+    console.error(err.message);
+    return res.status(500).json({code:-1,message:'Internal Server error'});
+  }
+
+}
 
 module.exports={
   addToCart,
   removeFromCart,
-  clearCart
+  clearCart,
+  updateCart
 }
