@@ -4,17 +4,6 @@ const fs=require('fs');
 const path=require('path');
 const time=process.env.redis_time;
 
-async function placeOrder(req,res) {
-
-  try{
-
-  }catch(err){
-    console.log(err.message);
-    return res.json({code:-1,message:'Internal Server error'});
-  }
-  
-}
-
 async function addToCart(req,res) {
 
   try{
