@@ -1,6 +1,6 @@
 const db=require('../../../Config/mysql_DB');
 const redis=require('../../../Config/redisClint');
-const fs=require('fs');
+const fs=require('fs').promises;
 const path=require('path');
 const time=process.env.redis_time;
 
@@ -100,57 +100,49 @@ async function getItemsByCanteen(req,res) {
   
 }
 
-async function getItemById(req,res) {
-  try{
-    const id=req.query.id;
+async function getItemById(req, res) {
+  try {
+    const id = req.query.id;
 
-    if(!id){
-      return res.json({code:0,message:'Invalid data.'});
+    if (!id) {
+      return res.json({ code: 0, message: 'Invalid data.' });
     }
 
-    let cacheItem=await redis.get("CanteenItem:"+id);
-    if(cacheItem){
-      console.log("Returning cashed menu.");
-      return res.json({code:1,message:'Item Fetched Successfully',data:JSON.parse(cacheItem)});
+    let cacheItem = await redis.get("CanteenItem:" + id);
+    if (cacheItem) {
+      return res.json({ code: 1, message: 'Item Fetched Successfully', data: JSON.parse(cacheItem) });
     }
 
-    console.log("cache miss.");
+    const conn = await db.getConnection();
+    try {
+      const query = 'SELECT canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity, comTime FROM FoodItem WHERE FoodItemId=? AND availability=true';
+      const [rows] = await conn.query(query, [id]);
 
-    const conn=await db.getConnection();
-    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity,comTime from FoodItem where FoodItemId=? and availability=true';
-    
-    await conn.query(query,[id]).then(async result=>{
-      conn.release();
-      result=result[0];
-
-      if(!result || result.length==0){
-        return res.json({code:1,message:"Item fetched Successfully",data:{}});
+      if (!rows || rows.length === 0) {
+        return res.json({ code: 1, message: "Item fetched Successfully", data: {} });
       }
 
-      try{
-        result[0].images=[];
-        const directoryPath = path.join(__dirname, "../../../public/images/canteens/"+result[0].canteenId+"/foodImages/"+result[0].FoodItemId+"/");
+      let result = rows[0];
 
-        const files = fs.readdirSync(directoryPath);
-        files.forEach(file => {
-          result[0].images.push(file);
-        });
-
-      }catch(err){
+      try {
+        const directoryPath = path.join(__dirname, "../../../public/images/canteens/" + result.canteenId + "/foodImages/" + result.FoodItemId + "/");
+        const files = await fs.readdir(directoryPath);
+        result.images = files;
+      } catch (err) {
         console.log(err.message);
-        return res.json({code:0,message:"Unable to fetch item images."});
+        result.images = [];
       }
 
-      await redis.setex("CanteenItem:"+id, time, JSON.stringify(result[0]));
+      await redis.setex("CanteenItem:" + id, 60, JSON.stringify(result));
 
-      return res.json({code:1,message:'Item Fetched Successfully',data:result[0]});
-    }).catch(err=>{
-      console.log(err.message);
-      return res.json({code:0,message:'Failed to fetch data.'});
-    })
+      return res.json({ code: 1, message: 'Item Fetched Successfully', data: result });
+    } finally {
+      conn.release();
+    }
 
-  }catch(err){
-    return res.json({code:-1,message:'Internal server error.'});
+  } catch (err) {
+    console.log(err.message);
+    return res.json({ code: -1, message: 'Internal server error.' });
   }
 }
 
