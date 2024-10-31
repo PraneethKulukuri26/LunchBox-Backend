@@ -25,7 +25,7 @@ async function addToCart(req,res) {
     if(!item){
       const conn=await db.getConnection();
 
-      const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where FoodItemId=? and availability=true';
+      const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity,comTime from FoodItem where FoodItemId=? and availability=true';
 
       await conn.query(query,[id]).then(async result=>{
         conn.release();
@@ -220,9 +220,32 @@ async function updateCart(req,res) {
 
 }
 
+async function getCartItems(req,res) {
+  try{
+    const userId=req.payload.userId;
+
+    let cacheCart=await redis.get("UserCart_"+userId);
+    if(!cacheCart){
+      return res.status(404).json({code:0,message:"cart data not found."});
+    }  
+
+    cacheCart=JSON.parse(cacheCart);
+    if(cacheCart.canteenId==-9){
+      return res.json({code:0,message:'Cart is empty.'});
+    }
+
+    
+
+  }catch(err){
+    console.error(err.message);
+    return res.status(500).json({code:-1,message:'Internal Server error'});
+  }
+}
+
 module.exports={
   addToCart,
   removeFromCart,
   clearCart,
-  updateCart
+  updateCart,
+  getCartItems
 }

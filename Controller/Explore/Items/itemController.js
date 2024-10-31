@@ -154,14 +154,6 @@ async function getItemById(req,res) {
   }
 }
 
-async function getCanteens(req,res) {
-  try{
-    
-  }catch(err){
-    return res.json({code:-1,message:'Internal server error.'});
-  }
-}
-
 module.exports={
   getItemsByCanteen,
   getItemById
