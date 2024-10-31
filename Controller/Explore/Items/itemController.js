@@ -38,7 +38,7 @@ async function getItemsByCanteen(req,res) {
 
 
     const conn=await db.getConnection();
-    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where canteenId=? and availability=true';
+    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity,comTime from FoodItem where canteenId=? and availability=true';
 
     await conn.query(query,[canteenId]).then(async result=>{
       conn.release();
@@ -117,7 +117,7 @@ async function getItemById(req,res) {
     console.log("cache miss.");
 
     const conn=await db.getConnection();
-    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity from FoodItem where FoodItemId=? and availability=true';
+    const query='select canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity,comTime from FoodItem where FoodItemId=? and availability=true';
     
     await conn.query(query,[id]).then(async result=>{
       conn.release();
@@ -149,14 +149,6 @@ async function getItemById(req,res) {
       return res.json({code:0,message:'Failed to fetch data.'});
     })
 
-  }catch(err){
-    return res.json({code:-1,message:'Internal server error.'});
-  }
-}
-
-async function getCanteens(req,res) {
-  try{
-    
   }catch(err){
     return res.json({code:-1,message:'Internal server error.'});
   }
