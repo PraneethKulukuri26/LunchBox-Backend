@@ -107,14 +107,12 @@ app.post('/test/files/',async (req,res)=>{
 });
 
 
-
-app.post('/test/postData',async(req,res)=>{
-  res.json({code:1});
-});
+// const conr=require('./Controller/Explore/canteen/canteenController');
+// app.get('/test/getData',conr.getCanteens);
 
 
 
-const rter=require('./Controller/User/authController');
-app.get('/test/profile',verifyToken,rter.getProfile);
+// const rter=require('./Controller/User/authController');
+// app.get('/test/profile',verifyToken,rter.getProfile);
 
 
