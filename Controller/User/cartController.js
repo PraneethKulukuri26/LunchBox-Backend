@@ -112,24 +112,31 @@ async function removeFromCart(req,res) {
 
     cacheCart=JSON.parse(cacheCart);
 
-    const itemExists = cacheCart.cart.some((item) => item.itemId === itemId);
-    if (!itemExists) {
+    let itemFound = false;
+    cacheCart.cart = cacheCart.cart.filter(item => {
+      if (item.itemId === itemId) {
+        itemFound = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (!itemFound) {
       return res.status(404).json({
         code: 0,
         message: `Item with itemId ${itemId} not found in cart.`,
       });
     }
-    
-    cacheCart.cart=cacheCart.cart.filter(item=>item.itemId!==itemId);
-    if(cacheCart.cart.length==0){
-      await redis.del("UserCart_"+userId);
-    }else{
-      await redis.setex("UserCart_"+userId,3600,JSON.stringify(cacheCart));
+
+    if (cacheCart.cart.length === 0) {
+      await redis.del("UserCart_" + userId);
+    } else {
+      await redis.setex("UserCart_" + userId, 3600, JSON.stringify(cacheCart));
     }
 
     return res.status(200).json({
       code: 1,
-      message: "Item successfully removed from the cart."
+      message: "Item successfully removed from the cart.",
     });
 
   }catch(err){
@@ -142,7 +149,7 @@ async function clearCart(req,res) {
   try{
     const userId=req.payload.userId;
 
-    let cacheCart=await redis.get("UserCart_"+userId);
+    const cacheCart=await redis.get("UserCart_"+userId);
     if(!cacheCart){
       return res.status(404).json({code:0,message:"cart data not found."});
     }
