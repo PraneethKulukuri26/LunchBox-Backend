@@ -1,6 +1,6 @@
 const redis=require('../../Config/redisClint');
 const db=require('../../Config/redisClint');
-const fs=require('fs');
+const fs=require('fs').promises;
 const path=require('path');
 const time=process.env.redis_time;
 
@@ -19,8 +19,10 @@ async function addToCart(req,res) {
       });
     }
 
-    let cacheCart=await redis.get("UserCart_"+userId);
-    let item=await redis.get("CanteenItem:"+id);
+    let [cacheCart, item] = await Promise.all([
+      redis.get("UserCart_" + userId),
+      redis.get("CanteenItem:" + itemId)
+    ]);
 
     if(!item){
       const conn=await db.getConnection();
@@ -42,10 +44,8 @@ async function addToCart(req,res) {
           result[0].images=[];
           const directoryPath = path.join(__dirname, "../../../public/images/canteens/"+result[0].canteenId+"/foodImages/"+result[0].FoodItemId+"/");
   
-          const files = fs.readdirSync(directoryPath);
-          files.forEach(file => {
-            result[0].images.push(file);
-          });
+          const files = await fs.readdir(directoryPath);
+          result[0].images=files;
   
         }catch(err){
           console.log(err.message);
@@ -89,8 +89,7 @@ async function addToCart(req,res) {
   }catch(err){
     console.log(err.message);
     return res.status(500).json({code:-1,message:'Internal Server error'});
-  }
-  
+  }  
 }
 
 async function removeFromCart(req,res) {
