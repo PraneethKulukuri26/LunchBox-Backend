@@ -1,6 +1,6 @@
 const redis=require('../../Config/redisClint');
 const db=require('../../Config/redisClint');
-const fs=require('fs');
+const fs=require('fs').promises;
 const path=require('path');
 const time=process.env.redis_time;
 
@@ -19,8 +19,10 @@ async function addToCart(req,res) {
       });
     }
 
-    let cacheCart=await redis.get("UserCart_"+userId);
-    let item=await redis.get("CanteenItem:"+id);
+    let [cacheCart, item] = await Promise.all([
+      redis.get("UserCart_" + userId),
+      redis.get("CanteenItem:" + itemId)
+    ]);
 
     if(!item){
       const conn=await db.getConnection();
@@ -42,10 +44,8 @@ async function addToCart(req,res) {
           result[0].images=[];
           const directoryPath = path.join(__dirname, "../../../public/images/canteens/"+result[0].canteenId+"/foodImages/"+result[0].FoodItemId+"/");
   
-          const files = fs.readdirSync(directoryPath);
-          files.forEach(file => {
-            result[0].images.push(file);
-          });
+          const files = await fs.readdir(directoryPath);
+          result[0].images=files;
   
         }catch(err){
           console.log(err.message);
@@ -89,8 +89,7 @@ async function addToCart(req,res) {
   }catch(err){
     console.log(err.message);
     return res.status(500).json({code:-1,message:'Internal Server error'});
-  }
-  
+  }  
 }
 
 async function removeFromCart(req,res) {
@@ -112,24 +111,31 @@ async function removeFromCart(req,res) {
 
     cacheCart=JSON.parse(cacheCart);
 
-    const itemExists = cacheCart.cart.some((item) => item.itemId === itemId);
-    if (!itemExists) {
+    let itemFound = false;
+    cacheCart.cart = cacheCart.cart.filter(item => {
+      if (item.itemId === itemId) {
+        itemFound = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (!itemFound) {
       return res.status(404).json({
         code: 0,
         message: `Item with itemId ${itemId} not found in cart.`,
       });
     }
-    
-    cacheCart.cart=cacheCart.cart.filter(item=>item.itemId!==itemId);
-    if(cacheCart.cart.length==0){
-      await redis.del("UserCart_"+userId);
-    }else{
-      await redis.setex("UserCart_"+userId,3600,JSON.stringify(cacheCart));
+
+    if (cacheCart.cart.length === 0) {
+      await redis.del("UserCart_" + userId);
+    } else {
+      await redis.setex("UserCart_" + userId, 3600, JSON.stringify(cacheCart));
     }
 
     return res.status(200).json({
       code: 1,
-      message: "Item successfully removed from the cart."
+      message: "Item successfully removed from the cart.",
     });
 
   }catch(err){
@@ -142,7 +148,7 @@ async function clearCart(req,res) {
   try{
     const userId=req.payload.userId;
 
-    let cacheCart=await redis.get("UserCart_"+userId);
+    const cacheCart=await redis.get("UserCart_"+userId);
     if(!cacheCart){
       return res.status(404).json({code:0,message:"cart data not found."});
     }
