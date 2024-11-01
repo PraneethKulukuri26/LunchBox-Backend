@@ -48,7 +48,7 @@ app.use('/api/User/auth',UserAuthRouter);
 const UserItemRouter=require('./router/User/itemRouter');
 app.use('/api/User/item',verifyToken,UserItemRouter);
 
-//User-order
+//User-cart
 const UserCartRouter=require('./router/User/cartRouter');
 app.use('/api/User/cart',verifyToken,UserCartRouter);
 
