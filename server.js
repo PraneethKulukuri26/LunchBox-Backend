@@ -50,7 +50,7 @@ app.use('/api/User/item',verifyToken,UserItemRouter);
 
 //User-order
 const UserCartRouter=require('./router/User/cartRouter');
-app.use('/api/User/order',verifyToken,UserCartRouter);
+app.use('/api/User/cart',verifyToken,UserCartRouter);
 
 //explore
 const ExploreRouter=require('./router/explore/exploreRouter');
