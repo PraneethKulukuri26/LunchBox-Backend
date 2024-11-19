@@ -61,7 +61,7 @@ async function verifyOtp(req,res) {
     const otpCache=await redis.get("OTP:"+email);
 
     if(!otpCache){
-      return res.json({code:0,message:"OTP has expired. Please request a new one."});
+      return res.status(400).json({code:0,message:"OTP has expired. Please request a new one."});
     }
 
     const isValid=await bcrypt.compare(otp,otpCache);
@@ -75,9 +75,9 @@ async function verifyOtp(req,res) {
         });
       
       await redis.del("OTP:"+email);  
-      return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
+      return res.status(200).json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
     }else{
-      return res.json({code:0,message:'Incorrect Otp'});
+      return res.status(400).json({code:0,message:'Incorrect Otp'});
     }
 
     // const conn=await db.getConnection();
@@ -110,8 +110,8 @@ async function verifyOtp(req,res) {
     //   }
     // });
   }catch(err){
-    console.log(err);
-    return res.json({ code: -1, message: "Internal server error" });
+    console.error("Error in verifying OTP: ", err);
+    return res.status(500).json({ code: -1, message: "Internal server error" });
   }
 }
 
