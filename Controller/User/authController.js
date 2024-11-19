@@ -80,35 +80,6 @@ async function verifyOtp(req,res) {
       return res.status(400).json({code:0,message:'Incorrect Otp'});
     }
 
-    // const conn=await db.getConnection();
-    // await conn.query("select otp from OtpTable where email = ? and created_at >= NOW() - INTERVAL 5 MINUTE ORDER BY created_at DESC LIMIT 1",[email])
-    // .then(async (result)=>{
-    //   if(result[0].length>0){
-    //     result=result[0];
-    //     console.log(result[0].otp);
-    //     const isValid=await bcrypt.compare(otp,result[0].otp);
-    //     console.log(isValid);
-    //     if(isValid){
-    //       await conn.query('delete from OtpTable where email=?',[email]);
-    //       conn.release();
-
-    //       const token=jwt.sign({
-    //         email:email,
-    //         purpose:purpose
-    //       },process.env.SECRET_KEY,{
-    //         algorithm: "HS512",
-    //         expiresIn: "10m",
-    //       });
-
-    //       return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
-    //     }else{
-    //       conn.release();
-    //       return res.json({code:0,message:'Incorrect Otp'});
-    //     }
-    //   }else{
-    //     return res.json({ code: 0, message: "OTP expired" });
-    //   }
-    // });
   }catch(err){
     console.error("Error in verifying OTP: ", err);
     return res.status(500).json({ code: -1, message: "Internal server error" });
