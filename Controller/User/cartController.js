@@ -33,7 +33,6 @@ async function addToCart(req,res) {
         const [result] = await conn.query(query, [itemId]);
 
         if (!result || result.length === 0) {
-          conn.release();
           return res.status(404).json({
             code: 0,
             message: "Item not found."
@@ -48,14 +47,15 @@ async function addToCart(req,res) {
           const files = await fs.readdir(directoryPath);
           itemData.images = files;
         } catch (err) {
-          console.log(err.message);
+          console.error(err.message);
         }
 
         await redis.setex("CanteenItem:" + itemId, 3600, JSON.stringify(itemData));
         item = itemData;
       } catch (err) {
-        conn.release();
         return res.status(500).json({ code: -1, message: 'Internal server error.' });
+      }finally{
+        conn.release();
       }
 
     }else{
@@ -68,7 +68,7 @@ async function addToCart(req,res) {
       if(cacheCart.cart.find(item=>item.itemId==itemId)){
         return res.status(200).json({
           code: 1,
-          message: 'Item added to cart successfully trtr'
+          message: 'Item added to cart successfully.'
         });
       }
 
@@ -99,7 +99,7 @@ async function addToCart(req,res) {
   }catch(err){
     console.log(err.message);
     return res.status(500).json({code:-1,message:'Internal Server error'});
-  }  
+  }
 }
 
 async function removeFromCart(req,res) {
