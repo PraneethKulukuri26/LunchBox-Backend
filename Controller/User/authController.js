@@ -11,23 +11,24 @@ async function sendEmailReg(req,res) {
   try{
     const {email}=req.body;
     
-    if(!email){
-      return res.json({
-        code:0,
-        message:'Invalid Data.'
-      })
+    if (!email) {
+      return res.status(400).json({
+        code: 0,
+        message: "Invalid Data. Email is required.",
+      });
     }
 
     const conn=await db.getConnection();
-    let userExistResult=await conn.query("select exists( select 1 from User where Email=?) as emailExist",[email]);
-    userExistResult=userExistResult[0];
-    if(userExistResult[0].emailExist==1){
+    try{
+      const userExistResult=await conn.query("select exists( select 1 from User where Email=?) as emailExist",[email]);
+      userExistResult=userExistResult[0];
+      if(userExistResult[0].emailExist==1){
+        return res.status(400).json({code:0,message:'Email already exists.'});
+      }
+    }finally{
       conn.release();
-      return res.json({code:0,message:'Email already exists.'});
     }
-
-    conn.release();
-
+    
     const otp=Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp=await bcrypt.hash(otp,10);
     
@@ -37,28 +38,15 @@ async function sendEmailReg(req,res) {
 
     if(result==1){
       await redis.expire("OTP:"+email,300);
-      return res.json({code:1,message:'OTP Sent Successfully.'});
+      return res.status(200).json({code:1,message:'OTP Sent Successfully.'});
     }else{
       await redis.del("OTP:"+email);
-      return res.json({code:0,message:'Failed to send Otp.'})
+      return res.status(500).json({code:0,message:'Failed to send Otp.'})
     }
 
-    //console.log(hashedOtp);
-    /*await conn.query("insert into OtpTable (email,otp,created_at) values(?,?,now())",[email,hashedOtp]);
-
-    const result=await mailSender.sendMailForRegister({email:email,otp:otp});
-
-    if(result==1){
-      conn.release();
-      return res.json({code:1,message:'OTP Sent Successfully.'});
-    }else{
-      await conn.query("delete from OtpTable where email=? and otp=?",[email,otp]);
-      conn.release();
-      return res.json({code:0,message:'Failed to send Otp.'})
-    }*/
   }catch(err){
-    console.log("Error in triggering otp: "+err);
-    return res.json({ code: -1, message: "Internal server error" });
+    console.error("Error in triggering otp: ",err);
+    return res.status(500).json({ code: -1, message: "Internal server error" });
   } 
 }
 
