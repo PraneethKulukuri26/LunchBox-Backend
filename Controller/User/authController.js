@@ -61,7 +61,7 @@ async function verifyOtp(req,res) {
     const otpCache=await redis.get("OTP:"+email);
 
     if(!otpCache){
-      return res.json({code:0,message:"OTP has expired. Please request a new one."});
+      return res.status(400).json({code:0,message:"OTP has expired. Please request a new one."});
     }
 
     const isValid=await bcrypt.compare(otp,otpCache);
@@ -75,43 +75,14 @@ async function verifyOtp(req,res) {
         });
       
       await redis.del("OTP:"+email);  
-      return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
+      return res.status(200).json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
     }else{
-      return res.json({code:0,message:'Incorrect Otp'});
+      return res.status(400).json({code:0,message:'Incorrect Otp'});
     }
 
-    // const conn=await db.getConnection();
-    // await conn.query("select otp from OtpTable where email = ? and created_at >= NOW() - INTERVAL 5 MINUTE ORDER BY created_at DESC LIMIT 1",[email])
-    // .then(async (result)=>{
-    //   if(result[0].length>0){
-    //     result=result[0];
-    //     console.log(result[0].otp);
-    //     const isValid=await bcrypt.compare(otp,result[0].otp);
-    //     console.log(isValid);
-    //     if(isValid){
-    //       await conn.query('delete from OtpTable where email=?',[email]);
-    //       conn.release();
-
-    //       const token=jwt.sign({
-    //         email:email,
-    //         purpose:purpose
-    //       },process.env.SECRET_KEY,{
-    //         algorithm: "HS512",
-    //         expiresIn: "10m",
-    //       });
-
-    //       return res.json({ code: 1, message: "OTP verified successfully",token:token, warrning:'This Token valid for only 10 minutes.'});
-    //     }else{
-    //       conn.release();
-    //       return res.json({code:0,message:'Incorrect Otp'});
-    //     }
-    //   }else{
-    //     return res.json({ code: 0, message: "OTP expired" });
-    //   }
-    // });
   }catch(err){
-    console.log(err);
-    return res.json({ code: -1, message: "Internal server error" });
+    console.error("Error in verifying OTP: ", err);
+    return res.status(500).json({ code: -1, message: "Internal server error" });
   }
 }
 
@@ -120,14 +91,13 @@ async function registerUser(req,res) {
     const {name,email,phoneNo,studentId,role,DayOrHos,EmpId,password}=req.body;
 
     if(!name || !email || !phoneNo || !role || !DayOrHos || !password || ((role==='staff' && !EmpId) || (role==='student' && !studentId))){
-      return res.json({code:0,message:'Invalid data.'});
+      return res.status(400).json({code:0,message:'Invalid data.'});
     }
 
     if(req.payload.email!=email || req.payload.purpose!='register'){
-      return res.json({code:0,message:'Cannot register password.'});
+      return res.status(400).json({code:0,message:'Cannot register user.'});
     }
 
-    const conn=await db.getConnection();
     let query='';
     let values=[];
 
@@ -138,20 +108,25 @@ async function registerUser(req,res) {
       query='insert into User (Name,Email,PhoneNo,role,DayOrHos,StudentId,password) values(?,?,?,?,?,?,?)';
       values=[name,email,phoneNo,role,DayOrHos,studentId,password];
     }
+    
+    const conn=await db.getConnection();
 
-    await conn.query(query,values).then(result=>{
-      conn.release();
-      if(result[0].affectedRows>0){
-        return res.json({code:1,message:'Successfully Registered.'});
-      }else{
-        return res.json({code:0,message:'Failed to Register.'});
+    try{
+      const result = await conn.query(query, values);
+
+      if (result[0].affectedRows > 0) {
+        return res.status(200).json({ code: 1, message: "Successfully Registered." });
+      } else {
+        return res.status(500).json({ code: 0, message: "Failed to Register." });
       }
-    }).catch(err=>{
+    }catch(err){
+      console.error("Error while inserting data: ", err);
+      return res.status(500).json({ code: -1, message: "Problem while inserting data." });
+    }
+    finally{
       conn.release();
-      console.log(err);
-      return res.json({code:-1,message:'Problem while inserting Data.'});
-    });
-
+    }
+    
   }catch(err){
     return res.json({ code: -1, message: "Internal server error" });
   }
