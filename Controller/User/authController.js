@@ -91,14 +91,13 @@ async function registerUser(req,res) {
     const {name,email,phoneNo,studentId,role,DayOrHos,EmpId,password}=req.body;
 
     if(!name || !email || !phoneNo || !role || !DayOrHos || !password || ((role==='staff' && !EmpId) || (role==='student' && !studentId))){
-      return res.json({code:0,message:'Invalid data.'});
+      return res.status(400).json({code:0,message:'Invalid data.'});
     }
 
     if(req.payload.email!=email || req.payload.purpose!='register'){
-      return res.json({code:0,message:'Cannot register password.'});
+      return res.status(400).json({code:0,message:'Cannot register user.'});
     }
 
-    const conn=await db.getConnection();
     let query='';
     let values=[];
 
@@ -109,20 +108,25 @@ async function registerUser(req,res) {
       query='insert into User (Name,Email,PhoneNo,role,DayOrHos,StudentId,password) values(?,?,?,?,?,?,?)';
       values=[name,email,phoneNo,role,DayOrHos,studentId,password];
     }
+    
+    const conn=await db.getConnection();
 
-    await conn.query(query,values).then(result=>{
-      conn.release();
-      if(result[0].affectedRows>0){
-        return res.json({code:1,message:'Successfully Registered.'});
-      }else{
-        return res.json({code:0,message:'Failed to Register.'});
+    try{
+      const result = await conn.query(query, values);
+
+      if (result[0].affectedRows > 0) {
+        return res.status(200).json({ code: 1, message: "Successfully Registered." });
+      } else {
+        return res.status(500).json({ code: 0, message: "Failed to Register." });
       }
-    }).catch(err=>{
+    }catch(err){
+      console.error("Error while inserting data: ", err);
+      return res.status(500).json({ code: -1, message: "Problem while inserting data." });
+    }
+    finally{
       conn.release();
-      console.log(err);
-      return res.json({code:-1,message:'Problem while inserting Data.'});
-    });
-
+    }
+    
   }catch(err){
     return res.json({ code: -1, message: "Internal server error" });
   }
