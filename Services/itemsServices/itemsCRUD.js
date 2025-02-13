@@ -38,3 +38,7 @@ async function addItem(params,image) {
         throw err;
     }
 }
+
+module.exports={
+    addItem,
+}

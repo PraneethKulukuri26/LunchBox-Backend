@@ -60,7 +60,7 @@ function loadCanteenItemsWithCanteenId(canteen) {
         return JSON.parse(data);
     } catch (err) {
         console.error('Error loading canteen data:', err.message);
-        return null;
+        throw err;
     }
 }
 
