@@ -54,7 +54,7 @@ function saveCanteenData(data,canteenId,itemId){
         fs.writeFileSync(filePath,JSON.stringify(data,null,4));
 
         const indexData=loadIndex();
-        indexData[itemId]=path;
+        indexData[itemId]=`data/${canteenId}.json`;
         saveIndex(indexData);
 
     }catch(err){
@@ -82,7 +82,7 @@ async function deleteItemWithItemId(canteenId,ItemId){
         let data=await loadCanteenItemsWithCanteenId(canteenId);
 
         if (!data.item || !data.item[ItemId]) {
-            throw new Error(`Item ID ${ItemId} not found in canteen ${canteenId}`);
+            throw new Error(`Item ID ${ItemId} not found in cantcanteenIdeen ${canteenId}`);
         }
 
         delete data.item[ItemId];
@@ -98,9 +98,40 @@ async function deleteItemWithItemId(canteenId,ItemId){
     }
 }
 
+function updateData(canteenId,ItemId,image,newData){
+    try{
+        let data=loadCanteenItemsWithCanteenId(canteenId);
+
+        if (!data.item||!data.item[ItemId]) {
+            throw new Error(`Item ID ${ItemId} not found in canteen ${canteenId}`);
+        }
+
+        const oldImagePath=data.item[ItemId].ImagePath;
+
+        Object.assign(data.item[ItemId], newData);
+
+        if(image){
+            const newImagePath=`public/images/${ItemId}`;
+
+            if (oldImagePath && fs.existsSync(`pubic/${oldImagePath}`)) {
+                fs.unlinkSync(`pubic/${oldImagePath}`);
+            }
+
+            image.mv(newImagePath);
+
+            data.item[ItemId].ImagePath=newImagePath;
+        }
+
+        fs.writeFileSync(path.join(__dirname, `data/${canteenId}.json`), JSON.stringify(data, null, 4));
+    }catch(err){
+        throw err;
+    }
+}
+
 module.exports={
     loadCanteenItemsWithCanteenId,
     generateIdForItem,
     saveCanteenData,
     deleteItemWithItemId,
+    updateData,
 }
