@@ -31,7 +31,7 @@ async function addItem(params,image) {
             ImagePath:`images/${itemId}`
         };
 
-        itemRepo.saveCanteenData(loadData,canteenId);
+        itemRepo.saveCanteenData(loadData,canteenId,itemId);
 
     
     }catch(err){
@@ -39,6 +39,15 @@ async function addItem(params,image) {
     }
 }
 
+async function deleteItem(canteenId,ItemId) {
+    try{
+        await itemRepo.deleteItemWithItemId(canteenId,ItemId);
+    }catch(err){
+        throw err;
+    }
+}
+
 module.exports={
     addItem,
+    deleteItem,
 }
