@@ -1,5 +1,5 @@
   const { measureMemory } = require("vm");
-  const db=require("../../Config/mysql_DB");
+  const db=require("../../Config/mysqlDb.js");
   const { checkIsAdmin } = require("./helper");
   const fs=require('fs');
   const path=require('path');
@@ -40,6 +40,7 @@
               console.log(err.message);
               return res.json({code:0,message:"Unable to fetch item images."});
             }
+            
         }
 
         return res.json({

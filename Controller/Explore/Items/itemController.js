@@ -1,4 +1,4 @@
-const db=require('../../../Config/mysql_DB');
+const db=require('../../../Config/mysqlDb.js');
 const redis=require('../../../Config/redisClint');
 const fs=require('fs').promises;
 const path=require('path');

@@ -1,4 +1,4 @@
-const db=require("../../Config/mysql_DB");
+const db=require("../../Config/mysqlDb.js");
 const mailSender=require('../../Services/mailSender');
 const jwt=require("jsonwebtoken");
 const bcrypt=require('bcrypt');
