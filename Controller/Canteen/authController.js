@@ -1,4 +1,4 @@
-const db=require("../../Config/mysql_DB");
+const db=require("../../Config/mysqlDb.js");
 const jwt=require("jsonwebtoken");
 
 async function login(req,res) {

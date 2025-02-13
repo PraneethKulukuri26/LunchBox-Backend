@@ -1,9 +1,10 @@
-const db=require('../../../Config/mysql_db');
+const db=require('../../../Config/mysqlDb')
 const redis=require('../../../Config/redisClint');
 const fs=require('fs');
 const path=require('path');
 
 async function getCanteens(req,res) {
+  
   try{
     let canteensD=await redis.get('canteens');
     const conn=await db.getConnection();

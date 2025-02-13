@@ -1,5 +1,5 @@
 const redis=require('../../Config/redisClint');
-const db=require('../../Config/mysql_DB');
+const db=require('../../Config/mysqlDb.js');
 const fs=require('fs').promises;
 const path=require('path');
 const time=process.env.redis_time;
@@ -400,5 +400,5 @@ module.exports={
   removeFromCart,
   clearCart,
   updateCart,
-  getCartItems
+  getCartItems,
 }
