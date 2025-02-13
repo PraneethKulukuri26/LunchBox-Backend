@@ -16,6 +16,14 @@ function loadIndex() {
     }
 }
 
+function saveIndex(data){
+    try{
+        fs.writeFileSync(indexFile,JSON.stringify(data,null,4));
+    }catch(err){
+        throw err;
+    }
+}
+
 let maxIdCache=null;
 let lastLoadedTime=0;
 const CACHE_EXPIRY=5*60*1000; 
@@ -40,10 +48,15 @@ function generateIdForItem() {
     }
 }
 
-function saveCanteenData(data,canteenId){
+function saveCanteenData(data,canteenId,itemId){
     try{
         const filePath=path.join(__dirname, `data/${canteenId}.json`);
         fs.writeFileSync(filePath,JSON.stringify(data,null,4));
+
+        const indexData=loadIndex();
+        indexData[itemId]=path;
+        saveIndex(indexData);
+
     }catch(err){
         throw err;
     }
@@ -64,8 +77,30 @@ function loadCanteenItemsWithCanteenId(canteen) {
     }
 }
 
+async function deleteItemWithItemId(canteenId,ItemId){
+    try{
+        let data=await loadCanteenItemsWithCanteenId(canteenId);
+
+        if (!data.item || !data.item[ItemId]) {
+            throw new Error(`Item ID ${ItemId} not found in canteen ${canteenId}`);
+        }
+
+        delete data.item[ItemId];
+
+        saveCanteenData(data,canteenId);
+
+        let indexData=loadIndex();
+        delete indexData[ItemId];
+
+        saveIndex(indexData);
+    }catch(err){
+        throw err;
+    }
+}
+
 module.exports={
     loadCanteenItemsWithCanteenId,
     generateIdForItem,
     saveCanteenData,
+    deleteItemWithItemId,
 }
