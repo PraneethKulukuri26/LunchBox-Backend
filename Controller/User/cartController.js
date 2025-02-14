@@ -49,6 +49,27 @@ async function addToCart(req,res) {
       item = JSON.parse(item);
     }
 
+    let {ava,StartingTime,EndingTime}=item;
+    const currentTime=new Date();
+    if(!ava){
+      return res.json({code:-1,message:`Item Id ${itemId} is currently unavailable.`});
+    }
+    
+    if(StartingTime&&EndingTime) {
+      let startTime=new Date();
+      let endTime=new Date();
+      
+      const [startHour,startMinute]=StartingTime.split(":" ).map(Number);
+      const [endHour,endMinute]=EndingTime.split(":" ).map(Number);
+      
+      startTime.setHours(startHour, startMinute, 0);
+      endTime.setHours(endHour, endMinute, 0);
+      
+      if(currentTime<startTime||currentTime>endTime){
+        return res.json({code:0,message:`Item ID ${cartItem.itemId} is only available from ${StartingTime} to ${EndingTime}.`});
+      }
+    }
+
     if(cacheCart){
       cacheCart=JSON.parse(cacheCart);
 
