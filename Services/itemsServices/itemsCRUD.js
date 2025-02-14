@@ -8,7 +8,7 @@ async function addItem(params,image) {
 
     try{
         
-        let loadData=await itemRepo.loadCanteenItemsWithCanteenId(canteenId);
+        let loadData=await itemRepo.loadCanteenItems(canteenId);
 
         const itemId=await itemRepo.generateIdForItem();
 
@@ -47,7 +47,27 @@ async function deleteItem(canteenId,ItemId) {
     }
 }
 
+async function updateItem(canteenId,ItemId,image,newData) {
+
+    try{
+        await updateItem(canteenId,ItemId,image,newData);
+    }catch(err){
+        throw err;
+    }
+    
+}
+
+async function getItemId(ItemId) {
+    try{
+        return await itemRepo.updateData(ItemId);
+    }catch(err){
+        throw err;
+    }
+    
+}
 module.exports={
     addItem,
     deleteItem,
+    updateItem,
+    getItemId,
 }
