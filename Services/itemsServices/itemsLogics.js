@@ -16,6 +16,20 @@ function loadIndex() {
     }
 }
 
+function loadItemPath(ItemId){
+    try{
+        const data=loadIndex();
+
+        if(!data[ItemId]) {
+            throw new Error(`Item ID ${ItemId} not found in index.`);
+        }
+
+        return path.join(__dirname, data[ItemId]); 
+    }catch(err){
+        throw err;
+    }
+}
+
 function saveIndex(data){
     try{
         fs.writeFileSync(indexFile,JSON.stringify(data,null,4));
@@ -63,9 +77,9 @@ function saveCanteenData(data,canteenId,itemId){
 }
 
 
-function loadCanteenItemsWithCanteenId(canteen) {
+function loadCanteenItems(canteen=null,fileDir=null) {
     try {
-        const filePath = path.join(__dirname, `data/${canteen}.json`);
+        const filePath = fileDir?path.join(__dirname,fileDir):path.join(__dirname, `data/${canteen}.json`);
         if (!fs.existsSync(filePath)) {
             throw new Error(`File not found: ${filePath}`);
         }
@@ -79,7 +93,7 @@ function loadCanteenItemsWithCanteenId(canteen) {
 
 async function deleteItemWithItemId(canteenId,ItemId){
     try{
-        let data=await loadCanteenItemsWithCanteenId(canteenId);
+        let data=await loadCanteenItems(canteenId);
 
         if (!data.item || !data.item[ItemId]) {
             throw new Error(`Item ID ${ItemId} not found in cantcanteenIdeen ${canteenId}`);
@@ -100,7 +114,7 @@ async function deleteItemWithItemId(canteenId,ItemId){
 
 function updateData(canteenId,ItemId,image,newData){
     try{
-        let data=loadCanteenItemsWithCanteenId(canteenId);
+        let data=loadCanteenItems(canteenId);
 
         if (!data.item||!data.item[ItemId]) {
             throw new Error(`Item ID ${ItemId} not found in canteen ${canteenId}`);
@@ -128,10 +142,27 @@ function updateData(canteenId,ItemId,image,newData){
     }
 }
 
+async function loadItemById(ItemId){
+    try{
+        const filePath=await loadItemPath(ItemId);
+        const data=await loadCanteenItems(filePath);
+
+        if(!data[ItemId]){
+            throw new Error(`Item ID ${ItemId} not found.`)
+        }
+
+        return data[ItemId];
+
+    }catch(err){
+        throw err;
+    }
+}
+
 module.exports={
-    loadCanteenItemsWithCanteenId,
+    loadCanteenItems,
     generateIdForItem,
     saveCanteenData,
     deleteItemWithItemId,
     updateData,
+    loadItemById,
 }
