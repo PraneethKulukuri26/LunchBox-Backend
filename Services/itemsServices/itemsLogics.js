@@ -145,7 +145,7 @@ function updateData(canteenId,ItemId,image,newData){
 async function loadItemById(ItemId){
     try{
         const filePath=await loadItemPath(ItemId);
-        const data=await loadCanteenItems(filePath);
+        const data=await loadCanteenItems(null,filePath);
 
         if(!data.item[ItemId]){
             return null;
@@ -160,6 +160,18 @@ async function loadItemById(ItemId){
     }
 }
 
+async function loadCanteenDataById(canteenId) {
+    try{
+        const data=await loadCanteenItems(canteenId);
+
+        const {CanteenName,Location,fromTime,ToTime,accessTo}=data;
+
+        return {CanteenName,Location,fromTime,ToTime,accessTo};
+    }catch(err){
+        throw err;
+    }
+}
+
 module.exports={
     loadCanteenItems,
     generateIdForItem,
@@ -167,4 +179,5 @@ module.exports={
     deleteItemWithItemId,
     updateData,
     loadItemById,
+    loadCanteenDataById,
 }

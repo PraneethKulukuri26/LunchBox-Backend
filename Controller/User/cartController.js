@@ -223,10 +223,10 @@ async function updateCart(req,res) {
 }
 
 async function getCartItems(req,res) {
-  try{
-    const userId=req.payload.userId;
-    const conn=await db.getConnection();
 
+  const userId=req.payload.userId;
+
+  try{
     let cacheCart=await redis.get("UserCart_"+userId);
     if(!cacheCart){
       return res.status(404).json({code:0,message:"cart data not found."});
@@ -237,148 +237,80 @@ async function getCartItems(req,res) {
       return res.json({code:0,message:'Cart is empty.'});
     }
 
-    let cartObj={};
-    let canteen = await redis.get(`canteen:${cacheCart.canteenId}`);
+    let cart=[];
+    const currentTime=new Date();
 
-    if(!canteen){
-      const [rows] = await conn.query('SELECT BlockPresent, CanteenName, canteen_access, canteen_timings, floorPresent FROM Canteen WHERE CanteenId=?', [cacheCart.canteenId]);
+    let itemKeys=cacheCart.cart.map(cartItem=>"CanteenItem:"+cartItem.itemId);
+    let itemsData = await redis.mget(itemKeys);
 
-      canteen = rows[0];
-      canteen.CanteenId = cacheCart.canteenId;
-      canteen.images = [];
+    cacheCart.cart.forEach((cartItem,index)=>{
+      if(!itemsData[index]){
+        missingItems.push(cartItem.itemId);
+        missingIndices.push(index);
+      }else{
+        itemsData[index]=JSON.parse(itemsData[index]);
+      }
+    });
 
-        try {
-          const directoryPath = path.join(__dirname, "../../../public/images/canteens/" + cacheCart.canteenId + "/canteenImages/");
-          const files =await fs.readdir(directoryPath);
-          canteen.images = files;
-        } catch (err) {
-          console.log(err.message);
-          canteen.images = [];
-        }
-
-        await redis.setex(`canteen:${cacheCart.canteenId}`, 60, JSON.stringify(canteen));
-    }else{
-      canteen=JSON.parse(canteen);
+    if (missingItems.length>0) {
+      let dbResults=await Promise.all(missingItems.map(id=>itemRepo.getItemById(id)));
+      
+      dbResults.forEach((item,i) => {
+        itemsData[missingIndices[i]]=item;
+        redis.setex("CanteenItem:"+missingItems[i],itemTime,JSON.stringify(item));
+      });
     }
 
-    cartObj = {
-      canteenId: canteen.CanteenId,
-      canteenName: canteen.CanteenName,
-      floor: canteen.floorPresent,
-      block: canteen.BlockPresent,
-      cart: []
-    };  
-
-    // for(let i=0;i<cacheCart.cart.length;i++){
-    //   const item=redis.get("CanteenItem:" + cacheCart.cart[i].itemId);
-
-    //   if(!item){
-    //     try{
-    //       const query = 'SELECT canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity, comTime FROM FoodItem WHERE FoodItemId=? AND availability=true';
-    //       const [rows] = await conn.query(query, [item.itemId]);
-  
-    //       if (!rows || rows.length === 0) {
-    //         return res.json({ code: 1, message: "Item fetched Successfully", data: {} });
-    //       }
-  
-    //       let result = rows[0];
-  
-    //       try {
-    //         const directoryPath = path.join(__dirname, "../../../public/images/canteens/" + result.canteenId + "/foodImages/" + result.FoodItemId + "/");
-    //         const files = await fs.readdir(directoryPath);
-    //         result.images = files;
-    //       } catch (err) {
-    //         console.log(err.message);
-    //         result.images = [];
-    //       }
-  
-    //       await redis.setex("CanteenItem:" + id, 60, JSON.stringify(result));
-    //       item=result;
-    //     }catch(err){
-    //       return res.json({code:0,message:'Error while fetching cart.'});
-    //     }
-    //     finally{
-    //       conn.release();
-    //     }
-    //   }else{
-    //     item=JSON.parse(item);
-    //   }
-
-    //   obj={
-    //     itemId:item.FoodItemId,
-    //     quantity:cacheCart.cart[i].quantity,
-    //     time:item.comTime,
-    //     cost:item.Price,
-    //     name:item.FoodItemName,
-    //     img:item.images,
-    //   };
-
-    //   if(cacheCart.cart[i].quantity<=item.Quantity){
-    //     obj.available=true;
-    //     obj.message='Item stock is avalaible.'
-    //   }else{
-    //     obj.available=false;
-    //     obj.message=`Only ${item.Quantity} avaluble.`;
-    //   }
-
-    //   cartObj.cart.push(obj);
-
-    // }
-
-    const itemIds = cacheCart.cart.map((item) => `CanteenItem:${item.itemId}`);
-    const cachedItems = await redis.mget(itemIds);
-
-    for (let i = 0; i < cacheCart.cart.length; i++) {
-      let item = cachedItems[i] ? JSON.parse(cachedItems[i]) : null;
-
-      if (!item) {
-        try {
-          const query = 'SELECT canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity, comTime FROM FoodItem WHERE FoodItemId=? AND availability=true';
-          const [rows] = await conn.query(query, [cacheCart.cart[i].itemId]);
-
-          if (!rows || rows.length === 0) {
-            continue;
-          }
-
-          item = rows[0];
-          try {
-            const directoryPath = path.join(__dirname, "../../../public/images/canteens/" + item.canteenId + "/foodImages/" + item.FoodItemId + "/");
-            item.images = await fs.readdir(directoryPath);
-          } catch (err) {
-            console.log(err.message);
-            item.images = [];
-          }
-
-          await redis.setex("CanteenItem:" + cacheCart.cart[i].itemId, 60, JSON.stringify(item));
-        } catch (err) {
-          return res.status(500).json({ code: 0, message: 'Error while fetching cart.' });
+    itemsData.forEach((item,index)=>{
+      let cartItem=cacheCart.cart[index];
+      let {ava,StartingTime,EndingTime}=item;
+      
+      if(!ava){
+        item.code=-1;
+        item.message=`Item ID ${cartItem.itemId} is currently unavailable.`;
+      }
+      
+      if(StartingTime&&EndingTime) {
+        let startTime=new Date();
+        let endTime=new Date();
+        
+        const [startHour,startMinute]=StartingTime.split(":" ).map(Number);
+        const [endHour,endMinute]=EndingTime.split(":" ).map(Number);
+        
+        startTime.setHours(startHour, startMinute, 0);
+        endTime.setHours(endHour, endMinute, 0);
+        
+        if(currentTime<startTime||currentTime>endTime){
+          item.code = 0;
+          item.message = `Item ID ${cartItem.itemId} is only available from ${StartingTime} to ${EndingTime}.`;
         }
       }
+      cart.push(item);
+    });
 
-      const obj = {
-        itemId: item.FoodItemId,
-        quantity: cacheCart.cart[i].quantity,
-        time: item.comTime,
-        cost: item.Price,
-        name: item.FoodItemName,
-        img: item.images,
-        available: cacheCart.cart[i].quantity <= item.Quantity,
-        message: cacheCart.cart[i].quantity <= item.Quantity
-          ? 'Item stock is available.'
-          : `Only ${item.Quantity} available.`
-      };
+    let canteenData=await redis.get("CanteenData:"+cacheCart.canteenId);
 
-      cartObj.cart.push(obj);
-
+    if(!canteenData){
+      canteenData=await itemRepo.getCanteenDataById(cacheCart.canteenId);
+    }else{
+      canteenData=JSON.parse(canteenData);
     }
-    
-    await conn.release();
-    return res.status(200).json({ code: 1, message: 'Cart Items fetched successfully.', data: cartObj });
 
+    const obj={
+      canteenId:cacheCart.canteenId,
+      CanteenName:canteenData.CanteenName,
+      Location:canteenData.Location,
+      fromTime:canteenData.fromTime,
+      ToTime:canteenData.ToTime,
+      cart:cart
+    };
+
+    return res.json({code:1,message:"Cart Fetched Successfully.",data:obj});
+    
   }catch(err){
-    console.error(err.message);
-    return res.status(500).json({code:-1,message:'Internal Server error'});
+    return res.json({code:-1,message:"Internal server Error."});
   }
+  
 }
 
 module.exports={
