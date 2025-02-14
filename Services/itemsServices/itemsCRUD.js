@@ -65,9 +65,18 @@ async function getItemById(ItemId) {
     }
     
 }
+
+async function getCanteenDataById(canteenId) {
+    try{
+        return await itemRepo.loadCanteenDataById(canteenId);
+    }catch(err){
+        throw err;
+    }
+}
 module.exports={
     addItem,
     deleteItem,
     updateItem,
     getItemById,
+    getCanteenDataById,
 }
