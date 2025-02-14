@@ -56,8 +56,18 @@ async function updateItem(canteenId,ItemId,image,newData) {
     }
     
 }
+
+async function getItemId(ItemId) {
+    try{
+        return await itemRepo.updateData(ItemId);
+    }catch(err){
+        throw err;
+    }
+    
+}
 module.exports={
     addItem,
     deleteItem,
     updateItem,
+    getItemId,
 }
