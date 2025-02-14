@@ -147,11 +147,13 @@ async function loadItemById(ItemId){
         const filePath=await loadItemPath(ItemId);
         const data=await loadCanteenItems(filePath);
 
-        if(!data[ItemId]){
-            throw new Error(`Item ID ${ItemId} not found.`)
+        if(!data.item[ItemId]){
+            return null;
         }
 
-        return data[ItemId];
+        data.item[ItemId].canteenId=data.canteenId;
+
+        return data.item[ItemId];
 
     }catch(err){
         throw err;

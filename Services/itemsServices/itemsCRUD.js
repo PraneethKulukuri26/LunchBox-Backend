@@ -57,9 +57,9 @@ async function updateItem(canteenId,ItemId,image,newData) {
     
 }
 
-async function getItemId(ItemId) {
+async function getItemById(ItemId) {
     try{
-        return await itemRepo.updateData(ItemId);
+        return await itemRepo.loadItemById(ItemId);
     }catch(err){
         throw err;
     }
@@ -69,5 +69,5 @@ module.exports={
     addItem,
     deleteItem,
     updateItem,
-    getItemId,
+    getItemById,
 }

@@ -1,8 +1,10 @@
 const redis=require('../../Config/redisClint');
 const db=require('../../Config/mysqlDb.js');
+const itemRepo=require('../../Services/itemsServices/itemsCRUD.js');
 const fs=require('fs').promises;
 const path=require('path');
-const time=process.env.redis_time;
+const itemTime=process.env.redis_time_item;
+const cartTime=process.env.redis_time_cart;
 
 async function addToCart(req,res) {
 
@@ -26,36 +28,21 @@ async function addToCart(req,res) {
 
     if(!item){
 
-      const conn = await db.getConnection();
-
       try {
-        const query = 'SELECT canteenId, FoodItemId, FoodItemName, Description, Price, Category, AvailableFrom, AvailableTo, Quantity, comTime FROM FoodItem WHERE FoodItemId=? AND availability=true';
-        const [result] = await conn.query(query, [itemId]);
 
-        if (!result || result.length === 0) {
+        const itemData=await itemRepo.getItemById(itemId);
+
+        if(!itemData){
           return res.status(404).json({
             code: 0,
             message: "Item not found."
           });
         }
 
-        let itemData = result[0];
-        itemData.images = [];
-
-        try {
-          const directoryPath = path.join(__dirname, "../../public/images/canteens/" + itemData.canteenId + "/foodImages/" + itemData.FoodItemId + "/");
-          const files = await fs.readdir(directoryPath);
-          itemData.images = files;
-        } catch (err) {
-          console.error(err.message);
-        }
-
-        await redis.setex("CanteenItem:" + itemId, 3600, JSON.stringify(itemData));
+        await redis.setex("CanteenItem:" + itemId, itemTime, JSON.stringify(itemData));
         item = itemData;
       } catch (err) {
         return res.status(500).json({ code: -1, message: 'Internal server error.' });
-      }finally{
-        conn.release();
       }
 
     }else{
@@ -65,7 +52,7 @@ async function addToCart(req,res) {
     if(cacheCart){
       cacheCart=JSON.parse(cacheCart);
 
-      if(cacheCart.cart.find(item=>item.itemId==itemId)){
+      if(cacheCart.cart.some(cartItem=>cartItem.itemId==itemId)){
         return res.status(200).json({
           code: 1,
           message: 'Item added to cart successfully.'
@@ -89,7 +76,7 @@ async function addToCart(req,res) {
       };
     }
 
-    await redis.setex("UserCart_" + userId, 60, JSON.stringify(cacheCart));
+    await redis.setex("UserCart_" + userId, cartTime, JSON.stringify(cacheCart));
 
     return res.status(200).json({
       code: 1,
