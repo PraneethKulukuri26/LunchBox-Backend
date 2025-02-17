@@ -2,21 +2,21 @@ const db=require("../../Config/mysqlDb.js");
 const jwt=require("jsonwebtoken");
 
 async function login(req,res) {
+  
+  const conn= await db.getConnection();
   try{
-    const conn= await db.getConnection();
-    
-    const{ CanteenName, BlockPresent,floorPresent,password }=req.body;
+    const{ CanteenId,Password }=req.body;
 
-    if(!CanteenName || !BlockPresent || !floorPresent || !password){
+    if(!CanteenId || !Password){
       return res.json({
         code:-1,
         message:"Proper infomation needed."
       })
     }
 
-    const query="select CanteenId,password from Canteen where CanteenName=? and BlockPresent=? and floorPresent=?";
+    const query="select * from Canteen where CanteenId=?";
 
-    await conn.query(query,[CanteenName,BlockPresent,floorPresent]).then(result=>{
+    await conn.query(query,[CanteenId]).then(result=>{
       conn.release();
       result=result[0];
 
@@ -27,7 +27,7 @@ async function login(req,res) {
         });
       }
 
-      if(!(password===result[0].password)){
+      if(!(Password===result[0].password)){
         return res.json({
           code:0,
           message:"Invalid Password."
@@ -37,11 +37,11 @@ async function login(req,res) {
       console.log(result[0]);
 
       const token=jwt.sign({
-        CanteenId:result[0].CanteenId,
+        CanteenId:result[0].CID,
         role:'admin'
       },process.env.SECRET_KEY,{
         algorithm: "HS512",
-        expiresIn: "2d",
+        expiresIn: "7d",
       });
 
       return res.status(200).json({
