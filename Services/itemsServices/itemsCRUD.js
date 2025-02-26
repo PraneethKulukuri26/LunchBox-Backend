@@ -4,7 +4,7 @@ const itemRepo=require('./itemsLogics');
 
 async function addItem(params,image) {
     //const {canteenId,FoodItemName,Description,Price,AvailableFrom,AvailableTo,Quantity,availability,tags}=params;
-    const {ItemName,Description,Price,Quantity,StartingTime,EndingTime,ava,canteenId,tags}=params;
+    const {ItemName,Description="",Price,Quantity=30,StartingTime="9:00",EndingTime="17:30",ava=true,canteenId,tags=["Veg"]}=params;
 
     try{
         
@@ -16,7 +16,8 @@ async function addItem(params,image) {
             loadData.item = {};
         }
 
-        await image.mv(`public/images/${itemId}`);
+        const imageExtension = image.name.split('.').pop();
+        await image.mv(`public/images/${itemId}.${imageExtension}`);
 
         loadData.item[itemId]={
             ItemId:itemId,
@@ -28,7 +29,7 @@ async function addItem(params,image) {
             StartingTime,
             EndingTime,
             ava,
-            ImagePath:`images/${itemId}`
+            ImagePath:`images/${itemId}.${imageExtension}`
         };
 
         itemRepo.saveCanteenData(loadData,canteenId,itemId);

@@ -4,6 +4,7 @@
   const fs=require('fs');
   const path=require('path');
   const { json } = require("body-parser");
+  const itemRepo=require('../../Services/itemsServices/itemsCRUD.js');
 
   async function CanteengetItems(req,res){
     try{
@@ -13,50 +14,52 @@
         return res.json({code:-1,message:'Invalid Token.'});
       }
 
-      const query='select * from FoodItem where CanteenId= ?';
-      const conn=await db.getConnection();
 
-      await conn.query(query,[CanteenId]).then(result=>{
-        conn.release();
-        result=result[0];
 
-        if(!result || result.length==0){
-          return res.json({code:1,message:"Items fetched Successfully",data:[]});
-        }
+      // const query='select * from FoodItem where CanteenId= ?';
+      // const conn=await db.getConnection();
+
+      // await conn.query(query,[CanteenId]).then(result=>{
+      //   conn.release();
+      //   result=result[0];
+
+      //   if(!result || result.length==0){
+      //     return res.json({code:1,message:"Items fetched Successfully",data:[]});
+      //   }
         
 
-        for(let i=0;i<result.length;i++){
-          result[i].images=[];
-          try{
-              const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+result[i].FoodItemId+"/");
+      //   for(let i=0;i<result.length;i++){
+      //     result[i].images=[];
+      //     try{
+      //         const directoryPath = path.join(__dirname, "../../public/images/canteens/"+CanteenId+"/foodImages/"+result[i].FoodItemId+"/");
 
-              const files = fs.readdirSync(directoryPath);
-              files.forEach(file => {
-                result[i].images.push(file);
-                console.log(file);
-              });
+      //         const files = fs.readdirSync(directoryPath);
+      //         files.forEach(file => {
+      //           result[i].images.push(file);
+      //           console.log(file);
+      //         });
     
-            }catch(err){
-              console.log(err.message);
-              return res.json({code:0,message:"Unable to fetch item images."});
-            }
+      //       }catch(err){
+      //         console.log(err.message);
+      //         return res.json({code:0,message:"Unable to fetch item images."});
+      //       }
             
-        }
+      //   }
 
-        return res.json({
-          code:1,
-          message:"Items fetched Successfully",
-          data:result,
-        })
+      //   return res.json({
+      //     code:1,
+      //     message:"Items fetched Successfully",
+      //     data:result,
+      //   })
 
-      }).catch((err)=>{
-        conn.release();
-        console.log("itemController->getItems err: "+err.message);
-        return res.json({
-          code:0,
-          message:"Unable to fetch data."
-        });
-      });
+      // }).catch((err)=>{
+      //   conn.release();
+      //   console.log("itemController->getItems err: "+err.message);
+      //   return res.json({
+      //     code:0,
+      //     message:"Unable to fetch data."
+      //   });
+      // });
     }catch(err){
       console.log("Failed to get items: "+err.message);
       return res.json({code:-1,message:"Failed to get items"});
@@ -298,10 +301,8 @@
           throw new Error("no images provided.");
         }
 
-        for(let i=0;i<images.length;i++){
-          if(!(images[i].mimetype=='image/png' || images[i].mimetype=='image/jpeg')){
-            throw new Error("file format not accesspted.");
-          }
+        if(!(images[0].mimetype=='image/png' || images[0].mimetype=='image/jpeg')){
+          throw new Error("file format not accesspted.");
         }
 
       }catch(err){
@@ -316,50 +317,55 @@
         return res.json({code:0,message:err.message});
       }
 
-      let { FoodItemName, Description = "", Price, Category = "veg", AvailableFrom = "9:00", AvailableTo = "17:30", Quantity = 30, availability = true } = jsonData;
+      jsonData.canteenId=CanteenId;
+      await itemRepo.addItem(jsonData,images[0]);
+
+      return res.json({code:1,message:"Item Added"});
+
+      // let { FoodItemName, Description = "", Price, Category = "veg", AvailableFrom = "9:00", AvailableTo = "17:30", Quantity = 30, availability = true } = jsonData;
       
-      if(!FoodItemName || !Price || isNaN(Price)){
-        return res.json({
-          code:0,
-          message:'Invalid Data'
-        })
-      }
+      // if(!FoodItemName || !Price || isNaN(Price)){
+      //   return res.json({
+      //     code:0,
+      //     message:'Invalid Data'
+      //   })
+      // }
 
-      const conn=await db.getConnection();
-      const query='insert into FoodItem (canteenId,FoodItemName,Description,Price,Category,AvailableFrom,AvailableTo,Quantity,availability) values(?,?,?,?,?,?,?,?,?)';
+      // const conn=await db.getConnection();
+      // const query='insert into FoodItem (canteenId,FoodItemName,Description,Price,Category,AvailableFrom,AvailableTo,Quantity,availability) values(?,?,?,?,?,?,?,?,?)';
 
-      await conn.query(query,[CanteenId,FoodItemName,Description,Price,Category,AvailableFrom,AvailableTo,Quantity,availability])
-      .then(async result=>{
-        conn.release();
+      // await conn.query(query,[CanteenId,FoodItemName,Description,Price,Category,AvailableFrom,AvailableTo,Quantity,availability])
+      // .then(async result=>{
+      //   conn.release();
 
-        if(result[0].affectedRows>0){
+      //   if(result[0].affectedRows>0){
           
-          const dir = path.join(__dirname,'../../public/images/canteens/'+CanteenId+'/foodImages/'+result[0].insertId+'/');
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
+      //     const dir = path.join(__dirname,'../../public/images/canteens/'+CanteenId+'/foodImages/'+result[0].insertId+'/');
+      //     if (!fs.existsSync(dir)) {
+      //       fs.mkdirSync(dir, { recursive: true });
+      //     }
 
-          for(let i=0;i<images.length;i++){
-            await images[i].mv('public/images/canteens/'+CanteenId+'/foodImages/'+result[0].insertId+'/'+images[i].name);
-          }
+      //     for(let i=0;i<images.length;i++){
+      //       await images[i].mv('public/images/canteens/'+CanteenId+'/foodImages/'+result[0].insertId+'/'+images[i].name);
+      //     }
 
-          return res.status(200).json({
-            code:1,message:'Item added.'
-          });
-        }else{
-          return res.status(200).json({
-            code:0,message:'Item not added.'
-          });
-        }
+      //     return res.status(200).json({
+      //       code:1,message:'Item added.'
+      //     });
+      //   }else{
+      //     return res.status(200).json({
+      //       code:0,message:'Item not added.'
+      //     });
+      //   }
 
-      }).catch(err=>{
-        conn.release();
-        console.log(err.message);
-        return res.json({
-          code:0,
-          message:'Data not added.'
-        })
-      });
+      // }).catch(err=>{
+      //   conn.release();
+      //   console.log(err.message);
+      //   return res.json({
+      //     code:0,
+      //     message:'Data not added.'
+      //   })
+      // });
       
     }catch(err){
       console.log(err);
